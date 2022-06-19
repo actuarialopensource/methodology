@@ -5,6 +5,7 @@
 from heavymodel import Model
 
 class Term(Model):
+    """Basic rough model, contains majority of the cashflows required"""
     def num_pols_if(self, t):
         """number of policies in force at time t0"""
         if t == 0:
@@ -44,6 +45,8 @@ class Term(Model):
             return 0
 
 class RealisticTerm(Term):
+    """Subclass of term which has capital requirement calculations, to avoid these being called recursively by PrudentTerm)"""
+    
     def capital_requirement(self, t):
         """capital to hold at time t, this calls a nested model (PrudentTerm) within term"""
         # set up data, at time t we roll on term_m and start_age
@@ -56,8 +59,8 @@ class RealisticTerm(Term):
         
         # calculate using a prudent basis, the capital required.
         model = PrudentTerm(data={"data":data})
-        model._run(proj_len=data["term_m"] + 1)
-        capital_requirement = sum(model.net_cashflow(i) for i in range(data["term_m"] + 1)) # lets not worry about discounting
+        model._run(proj_len=data["term_m"] + 1)   # run for remaining term
+        capital_requirement = sum(model.net_cashflow(i) for i in range(data["term_m"] + 1)) # lets not worry about discounting - per policy in force
         return capital_requirement * self.num_pols_if(t)  # only have a requirement for in force policies
     
     def capital_change(self, t):
@@ -85,7 +88,7 @@ if __name__ == "__main__":
     
     rw_model = RealisticTerm(data={"data":data})
     rw_model._run(proj_len=data["term_m"] + 1)
-    result_df = rw_model._dataframe()
+    result_df = rw_model._dataframe()   # store results in a dataframe for easy analysis
 
     # rough outputs
     print(result_df)   # capital_change shows the set up of prudent capital and then release of prudence.
